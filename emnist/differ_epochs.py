@@ -10,24 +10,23 @@ import time
 
 # 环境变量设置
 nest_asyncio.apply()
-is_training = True
+is_training = False
 is_ascending = False
 is_descending = False
-image_path = './results/images/differ_epochs.png'
-model_path = './results/models/keras_model_mnist.h5'
+images_path = './results/images/differ_epochs.png'
+models_path = './results/models/'
 logs_path = './results/logs/'
 case = ['ascend', 'descend', 'average']
 
 # 定义FL超参数
 # EXPERIMENTS = 4
-CLIENTS_NUM = 6  # 终端数
-ROUNDS = 10  # 联邦学习轮数
+CLIENTS_NUM = 4  # 终端数
+ROUNDS = 9  # 联邦学习轮数
 EPOCHS_ASC = [tf.Variable(0, dtype=tf.int32, name=f'client{i}_epochs') for i in range(CLIENTS_NUM)]  # 本地训练轮数
-EPOCHS_DSC = [tf.Variable(ROUNDS+1, dtype=tf.int32, name=f'client{i}_epochs') for i in range(CLIENTS_NUM)]
-EPOCHS_AVG = [tf.Variable(10, dtype=tf.int32, name=f'client{i}_epochs') for i in range(CLIENTS_NUM)]
+EPOCHS_DSC = [tf.Variable(ROUNDS + 1, dtype=tf.int32, name=f'client{i}_epochs') for i in range(CLIENTS_NUM)]
+EPOCHS_AVG = [tf.Variable(int((ROUNDS + 1) / 2), dtype=tf.int32, name=f'client{i}_epochs') for i in range(CLIENTS_NUM)]
 BATCH_SIZE = 32  # 批量大小
 LEARNING_RATE = 0.02
-
 
 # 准备数据
 # emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
@@ -69,6 +68,13 @@ def evaluate(model_weights, dataset):
     )
     model.set_weights(model_weights)
     return model.evaluate(dataset)
+
+
+# 保存模型参数
+def save_model_weights(model_weights, path):
+    model = create_mnist_model()
+    model.set_weights(model_weights)
+    model.save_weights(path)
 
 
 # 初始化模型并返回模型参数
@@ -230,22 +236,26 @@ if __name__ == '__main__':
             # if acc_val >= 0.80:
             #     break
 
-        print('time_used:{:.2f} s'.format(time.time()-start_time))
+        print('time_used:{:.2f} s'.format(time.time() - start_time))
+
+        # 保存model和metric
+        # 保存model和metric
         np.save(os.path.join(logs_path, case[flag]), acc)
+        save_model_weights(state, os.path.join(models_path, case[flag] + '.h5'))
 
     else:
         fig = plt.figure()
         ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
         lines = ['o-', 's--', 'x:']
         for i in range(len(case)):
-            content = np.load(os.path.join(logs_path, case[i]+'.npy'))
-            ax.plot(np.linspace(1,ROUNDS,ROUNDS), content, lines[i])
+            content = np.load(os.path.join(logs_path, case[i] + '.npy'))
+            ax.plot(np.linspace(1, ROUNDS, ROUNDS), content, lines[i])
 
         ax.set_title('FedAvg')
         ax.set_xlabel('Rounds')
         ax.set_ylabel('Accuracy')
-        ax.set_xlim(0, ROUNDS+1)
+        ax.set_xlim(0, ROUNDS)
         ax.set_ylim(0, 1)
-        ax.set_xticks(np.arange(0,ROUNDS+1,2))
-        plt.legend(labels=case,loc='lower right')
-        plt.savefig(image_path)
+        # ax.set_xticks(np.arange(0, ROUNDS))
+        plt.legend(labels=case, loc='lower right')
+        plt.savefig(images_path)
