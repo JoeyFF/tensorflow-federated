@@ -18,6 +18,3 @@ import numpy as np
 # a[1][1].plot(x,np.log10(x))
 # a[1][1].set_title('log')
 # plt.show()
-
-plt.plot(range(10))
-plt.show()
