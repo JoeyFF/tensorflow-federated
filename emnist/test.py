@@ -1,5 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
+import tensorflow as tf
 
 # 在同一画布画多张子图
 # fig, a = plt.subplots(2,2)
@@ -18,3 +19,10 @@ import numpy as np
 # a[1][1].plot(x,np.log10(x))
 # a[1][1].set_title('log')
 # plt.show()
+accuracy = tf.keras.metrics.SparseCategoricalAccuracy()
+labels = [1,2]
+predictions = np.argmax([[0.1, 0.5, 0.4],[0.7,0.3,0.2]],axis=1)
+res = tf.cast(tf.equal(labels, predictions), dtype=tf.float32)
+print(res)
+res = tf.reduce_mean(res)
+print(res)

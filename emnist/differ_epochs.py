@@ -5,7 +5,7 @@ import tensorflow_federated as tff
 import nest_asyncio
 from collections import OrderedDict
 from matplotlib import pyplot as plt
-import utils
+from utils import data
 import time
 
 # 环境变量设置
@@ -31,9 +31,9 @@ LEARNING_RATE = 0.02
 # 准备数据
 # emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
-clients_datasets = utils.datasets_for_clients(x_train, y_train, clients_num=CLIENTS_NUM, batch_size=BATCH_SIZE)
-dataset_train = utils.preprocess(x_train, y_train, batch_size=BATCH_SIZE)
-dataset_test = utils.preprocess(x_test, y_test, batch_size=BATCH_SIZE)
+clients_datasets = data.datasets_for_clients(x_train, y_train, clients_num=CLIENTS_NUM, batch_size=BATCH_SIZE)
+dataset_train = data.preprocess(x_train, y_train, batch_size=BATCH_SIZE)
+dataset_test = data.preprocess(x_test, y_test, batch_size=BATCH_SIZE)
 input_spec = clients_datasets[0].element_spec
 
 

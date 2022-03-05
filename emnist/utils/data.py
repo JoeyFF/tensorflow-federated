@@ -2,6 +2,7 @@ import numpy
 import tensorflow as tf
 from typing import List
 import numpy as np
+import random
 
 
 # 数据预处理
@@ -57,11 +58,37 @@ def datasets_for_clients(images, labels, *, clients_num, batch_size=32) -> List[
     return clients_datasets
 
 
-# 将list写入文件
-def write_list_to_file(target, filename):
-        np.save(filename, numpy.array(target))
+def datasets_random_for_clients(images, labels, *, clients_num, batch_size=32) -> List[tf.data.Dataset]:
+    """将数据随机分给clients
 
-# 从文件读取list
-def read_list_from_file(filename):
-    return np.load(filename)
+    Args:
+        images: Numpy数组格式的图片
+        labels: Numpy数组格式的标签
+        clients_num: 终端数量
+        batch_size: 批量大小
+    Returns:
+        clients_datasets: 数据集List
+        每个元素为tf.data.Dataset
+        元素个数随机
+    """
+    if clients_num <= 0 or clients_num > 100:
+        raise ValueError('The number of client must between 1 and 100')
 
+    # 在0-batch_num产生随机分割序号
+    batch_num = int(images.shape[0] / batch_size)
+    slice_index = [0,]
+    random_index = sorted(random.sample(range(1, batch_num), clients_num - 1))
+    for index in random_index:
+        slice_index.append(index*batch_size)
+    slice_index.append(batch_num*batch_size)
+
+    images_slice = [images[slice_index[i]:slice_index[i+1]] for i in range(clients_num)]
+    labels_slice = [labels[slice_index[i]:slice_index[i+1]] for i in range(clients_num)]
+
+    clients_datasets = []
+    for i in range(clients_num):
+        clients_datasets.append(preprocess(images_slice[i],
+                                           labels_slice[i],
+                                           batch_size))
+
+    return clients_datasets
