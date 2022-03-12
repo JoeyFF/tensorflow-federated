@@ -1,7 +1,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import tensorflow as tf
-
 # 在同一画布画多张子图
 # fig, a = plt.subplots(2,2)
 # x = np.arange(1,5)

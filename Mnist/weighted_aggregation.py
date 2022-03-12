@@ -81,6 +81,7 @@ federated_dataset_type = tff.FederatedType(dataset_type, tff.CLIENTS)
 federated_reputation_type = tff.FederatedType(tf.float32, tff.CLIENTS)
 federated_is_weighted_type = tff.FederatedType(tf.int8, tff.SERVER)
 
+
 # 初始化全局模型参数为FederatedType
 @tff.federated_computation
 def init_global_model():
@@ -113,7 +114,7 @@ def train(model, dataset, global_model_weights, optimizer):
                 outputs = model.forward_pass(batch)
             # 梯度下降
             predictions = tf.argmax(outputs.predictions, axis=1, output_type=tf.int32)
-            batch_acc = tf.reduce_mean(tf.cast(tf.equal(batch[1], predictions),dtype=tf.float32))
+            batch_acc = tf.reduce_mean(tf.cast(tf.equal(batch[1], predictions), dtype=tf.float32))
             batches_acc = tf.add(batches_acc, batch_acc)
             grads = tape.gradient(outputs.loss, local_model_weights)
             optimizer.apply_gradients(zip(grads, local_model_weights))
@@ -121,9 +122,9 @@ def train(model, dataset, global_model_weights, optimizer):
         reputation = tf.add(reputation, batches_acc)
         batches_acc = 0.0
 
-    tf.print('Reputation:', reputation/EPOCHS)
+    tf.print('Reputation:', reputation / EPOCHS)
 
-    return local_model_weights, reputation/EPOCHS
+    return local_model_weights, reputation / EPOCHS
 
 
 # 本地训练
@@ -190,7 +191,7 @@ def run(is_weighted=1):
     # reputation_list = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
     for r in range(ROUNDS):
         print(f'Round:{r + 1}/{ROUNDS}...')
-        state = federated_algorithm.next(state, clients_datasets,is_weighted)
+        state = federated_algorithm.next(state, clients_datasets, is_weighted)
         loss_val, accuracy_val = evaluate(state, dataset_test)
         accuracy.append(accuracy_val)
     return accuracy
