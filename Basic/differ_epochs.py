@@ -3,13 +3,19 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_federated as tff
 import nest_asyncio
-from collections import OrderedDict
+from absl import flags, app
+from absl.flags import FLAGS
 from matplotlib import pyplot as plt
 from utils import data
 import time
 
 # 环境变量设置
 nest_asyncio.apply()
+flags.DEFINE_enum('order', 'avg', ['avg', 'asc', 'desc'], 'avg:same epochs'
+                                                          'asc:ascending epochs'
+                                                          'desc:descending epochs')
+flags.DEFINE_boolean('train', True, 'train or plot')
+
 is_training = False
 is_ascending = False
 is_descending = False
@@ -184,8 +190,8 @@ def next_fn(global_model_weights, local_dataset, local_epochs):
     return global_model_weights_updated
 
 
-if __name__ == '__main__':
-    if is_training:
+def main(_argv):
+    if FLAGS.train:
         federated_algorithm = tff.templates.IterativeProcess(
             initialize_fn=init_global_model,
             next_fn=next_fn
@@ -197,11 +203,11 @@ if __name__ == '__main__':
         acc = []
         start_time = time.time()
 
-        if is_ascending:
+        if FLAGS.order == 'asc':
             # 升序：增加本地训练轮数,最大=ROUNDS
             flag = 0
             EPOCHS = EPOCHS_ASC
-        elif is_descending:
+        elif FLAGS.order == 'desc':
             # 降序：减少本地训练轮数,最小1
             flag = 1
             EPOCHS = EPOCHS_DSC
@@ -239,16 +245,15 @@ if __name__ == '__main__':
         print('time_used:{:.2f} s'.format(time.time() - start_time))
 
         # 保存model和metric
-        # 保存model和metric
-        np.save(os.path.join(logs_path, case[flag]), acc)
-        save_model_weights(state, os.path.join(models_path, case[flag] + '.h5'))
+        np.save(os.path.join(logs_path, FLAGS.order), acc)
+        save_model_weights(state, os.path.join(models_path, FLAGS.order + '.h5'))
 
     else:
         fig = plt.figure()
         ax = fig.add_axes([0.1, 0.1, 0.8, 0.8])
         lines = ['o-', 's--', 'x:']
         for i in range(len(case)):
-            content = np.load(os.path.join(logs_path, case[i] + '.npy'))
+            content = np.load(os.path.join(logs_path, FLAGS.order + '.npy'))
             ax.plot(np.linspace(1, ROUNDS, ROUNDS), content, lines[i])
 
         ax.set_title('FedAvg')
@@ -259,3 +264,10 @@ if __name__ == '__main__':
         # ax.set_xticks(np.arange(0, ROUNDS))
         plt.legend(labels=case, loc='lower right')
         plt.savefig(images_path)
+
+
+if __name__ == '__main__':
+    try:
+        app.run(main)
+    except SystemExit:
+        pass

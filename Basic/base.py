@@ -13,7 +13,7 @@ EPOCHS = 5  # 本地训练轮数
 ROUNDS = 10  # 联邦学习轮数
 BATCH_SIZE = 32  # 批量大小
 LEARNING_RATE = 0.02
-CLIENTS_NUM = 6  # 终端数
+CLIENTS_NUM = 1  # 终端数
 
 # 准备数据
 # emnist_train, emnist_test = tff.simulation.datasets.emnist.load_data()
@@ -22,7 +22,6 @@ clients_datasets = data.datasets_for_clients(x_train, y_train, clients_num=CLIEN
 dataset_train = data.preprocess(x_train, y_train, batch_size=BATCH_SIZE)
 dataset_test = data.preprocess(x_test, y_test, batch_size=BATCH_SIZE)
 input_spec = clients_datasets[0].element_spec
-
 
 # 构建keras模型
 def create_mnist_model():
@@ -47,7 +46,7 @@ def model_tff():
 
 
 # 评估模型
-def evaluate(model_weights,dataset):
+def evaluate(model_weights, dataset):
     model = create_mnist_model()
     model.compile(
         loss=tf.keras.losses.SparseCategoricalCrossentropy(),
@@ -81,7 +80,7 @@ def init_global_model():
     return tff.federated_value(model_init(), tff.SERVER)
 
 
-@tf.function
+# @tf.function
 def train(model, dataset, global_model_weights, optimizer):
     """本地训练实现
 

@@ -1,8 +1,9 @@
 import tensorflow as tf
 import tensorflow_federated as tff
 import nest_asyncio
+import numpy as np
 from matplotlib import pyplot as plt
-from utils import data
+from utils import data, model
 
 nest_asyncio.apply()
 is_training = True
@@ -13,8 +14,8 @@ is_training = True
 
 # 定义FL超参数
 EXPERIMENTS = 4
-EPOCHS = 5  # 本地训练轮数
-ROUNDS = 20  # 联邦学习轮数
+EPOCHS = 1  # 本地训练轮数
+ROUNDS = 10  # 联邦学习轮数
 BATCH_SIZE = 32  # 批量大小
 LEARNING_RATE = 0.02
 CLIENTS_NUM = 6  # 终端数
@@ -26,6 +27,7 @@ CLIENTS_NUM = 6  # 终端数
 clients_datasets = data.datasets_random_for_clients(x_train, y_train, clients_num=CLIENTS_NUM, batch_size=BATCH_SIZE)
 print([len(clients_datasets[i]) for i in range(CLIENTS_NUM)])
 # dataset_train = utils.preprocess(x_train, y_train, batch_size=BATCH_SIZE)
+# dataset_evaluate = data.preprocess(x_test[0:5000], y_test[0:5000], batch_size=BATCH_SIZE)
 dataset_test = data.preprocess(x_test, y_test, batch_size=BATCH_SIZE)
 input_spec = clients_datasets[0].element_spec
 
@@ -108,7 +110,7 @@ def train(model, dataset, global_model_weights, optimizer):
     reputation = tf.constant(0.0, dtype=tf.float32)
     batches_num = tf.cast(len(dataset), tf.float32)
     for epoch in range(EPOCHS):
-        for index, batch in enumerate(dataset):
+        for batch in dataset:
             with tf.GradientTape() as tape:
                 # outputs(BatchOutput): loss,predictions,num_examples
                 outputs = model.forward_pass(batch)
@@ -150,6 +152,12 @@ def global_update(aggregated_model_weights):
     return global_model_update(model, aggregated_model_weights)
 
 
+# 在服务器端用测试集评估客户端提交的模型更新
+# @tff.tf_computation(model_weights_type, dataset_type)
+# def local_evaluate(model_weights, dataset):
+#     return evaluate(model_weights, dataset)
+
+
 # 联邦学习流程
 @tff.federated_computation(federated_model_weights_type, federated_dataset_type, federated_is_weighted_type)
 def next_fn(global_model_weights, local_dataset, is_weighted):
@@ -162,21 +170,23 @@ def next_fn(global_model_weights, local_dataset, is_weighted):
     """
     # 服务器将全局模型分发给每个终端 Server -> Clients
     model_weights_for_clients = tff.federated_broadcast(global_model_weights)
+
     # 终端更新本地模型 Clients -> Clients
     local_model_weights, local_accuracy = tff.federated_map(
         local_train, (model_weights_for_clients, local_dataset))
 
+    # 服务器收集终端提交的模型更新 Clients -> Server
+    # _, accuracy_evaluate = tff.sequence_map()local_evaluate, (model_weights_for_clients, dataset_test)
+    # tff.sequence_reduce()
     # 服务器聚合所有终端的本地模型 Clients -> Server
-    # 考虑tff.aggregators如何实现
-    # 注意tff.federated_mean的可选参数weight，可设置每个终端的本地模型聚合权重
     if is_weighted == 1:
         aggregated_model_weights = tff.federated_mean(local_model_weights, weight=local_accuracy)
     else:
         aggregated_model_weights = tff.federated_mean(local_model_weights)
     # 更新全局模型
-    global_model_weights_updated = tff.federated_map(global_update, aggregated_model_weights)
+    # global_model_weights_updated = tff.federated_map(global_update, aggregated_model_weights)
 
-    return global_model_weights_updated
+    return aggregated_model_weights
 
 
 def run(is_weighted=1):
@@ -205,6 +215,7 @@ if __name__ == '__main__':
         plt.plot(res_unweighted, 'bx:')
         plt.title('FedAvg')
         plt.xlabel('Rounds')
+        plt.xticks(np.arange(10))
         plt.ylabel('Accuracy')
         plt.legend(labels=['weighted', 'unweighted'], loc='lower right')
         plt.savefig('./results/images/weighted_aggregation.png')
